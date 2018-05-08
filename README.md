@@ -2,7 +2,7 @@
 
 WORK IN PROGRESS - 10% project.
 
-NOTE - keeping this as an offline script for now.
+NOTE - keeping this as an offline tool for now.
 
 The DRR is a microservice based project to analyse all permutations from structural alterations (combinations of dimension items added/removed)
 that could be applied to a given source dataset. Presenting the findings as a human readable report.
