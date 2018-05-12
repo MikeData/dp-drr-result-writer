@@ -18,7 +18,7 @@ var (
 	sourceFile           = flag.String("filepath", "", "The path to the file being uploaded.")
 	sqs_source_queue_url = os.Getenv("SQS_SOURCE_QUEUE_URL")
 	sqs_task_queue_url   = os.Getenv("SQS_TASK_QUEUE_URL")
-	aws_region = os.Getenv("AWS_REGION")
+	aws_region           = os.Getenv("AWS_REGION")
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 	// load to s3
 	s3.UploadSource(fileIn, *sourceFile, aws_region)
 
-  // read in the header row
+	// read in the header row
 	csvReader := csv.NewReader(fileIn)
 	headerRow, err := csvReader.Read()
 	if err != nil {
@@ -99,7 +99,7 @@ func main() {
 	}
 
 	// Send all the task messages
-	for i:=0;i<len(taskList);i++ {
+	for i := 0; i < len(taskList); i++ {
 		messager.SendMsg(taskList[i], sqs_task_queue_url)
 	}
 
