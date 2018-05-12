@@ -8,6 +8,7 @@ import (
 
 	"github.com/mikedata/dp-drr-result-writer/messager"
 	"github.com/mikedata/dp-drr-result-writer/models"
+	"github.com/mikedata/dp-drr-result-writer/s3"
 	"github.com/nu7hatch/gouuid"
 	"io"
 	"os"
@@ -17,6 +18,7 @@ var (
 	sourceFile           = flag.String("filepath", "", "The path to the file being uploaded.")
 	sqs_source_queue_url = os.Getenv("SQS_SOURCE_QUEUE_URL")
 	sqs_task_queue_url   = os.Getenv("SQS_TASK_QUEUE_URL")
+	aws_region = os.Getenv("AWS_REGION")
 )
 
 func main() {
@@ -32,38 +34,40 @@ func main() {
 		log.Fatal("Aborting. Unable to load csv: " + *sourceFile)
 	}
 
-	csvReader := csv.NewReader(fileIn) // TODO - cant load a string
+	// load to s3
+	s3.UploadSource(fileIn, *sourceFile, aws_region)
 
-	// Scan for header row, this information will need to be sent to the
-	// dataset API with the number of observations in a PUT request
+  // read in the header row
+	csvReader := csv.NewReader(fileIn)
 	headerRow, err := csvReader.Read()
 	if err != nil {
 		log.Fatal("Aborting. Encountered error when processing header row")
 	}
 
 	// create a UUID for source task
-	// doing this early for early fall-over
 	sourceUUID, err := uuid.NewV4()
 	if err != nil {
 		log.Fatal("Failed to genrate a UUID to represent source file.")
 	}
 
-	// Cache things we've seen before - we only want unique items
+	// create a cache for things we've seen before - we only want unique items
 	datasetCache := make(map[string][]string)
 	var emptyDim []string
 	for i := range headerRow {
 		datasetCache[headerRow[i]] = emptyDim
 	}
 
+	// marshall all the tasks into a list before sending any
 	var taskList [][]byte
 
+	// iterate and create our unique {dimension:item} tasks
 	for {
 		line, err := csvReader.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Fatal("Error reading CSV file.")
+			log.Fatal("Error reading CSV file.", err)
 		}
 
 		for i := 0; i < len(headerRow); i++ {
@@ -94,7 +98,7 @@ func main() {
 		}
 	}
 
-	// Send the task messages
+	// Send all the task messages
 	for i:=0;i<len(taskList);i++ {
 		messager.SendMsg(taskList[i], sqs_task_queue_url)
 	}
