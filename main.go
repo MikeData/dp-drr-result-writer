@@ -2,17 +2,22 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"log"
-	
+
+	"github.com/mikedata/dp-drr-result-writer/messager"
 	"github.com/mikedata/dp-drr-result-writer/models"
 	"github.com/nu7hatch/gouuid"
 	"io"
 	"os"
-	"encoding/json"
 )
 
-var sourceFile = flag.String("filepath", "", "The path to the file being uploaded.")
+var (
+	sourceFile           = flag.String("filepath", "", "The path to the file being uploaded.")
+	sqs_source_queue_url = os.Getenv("SQS_SOURCE_QUEUE_URL")
+	sqs_task_queue_url   = os.Getenv("SQS_TASK_QUEUE_URL")
+)
 
 func main() {
 
@@ -37,17 +42,11 @@ func main() {
 	}
 
 	// create a UUID for source task
+	// doing this early for early fall-over
 	sourceUUID, err := uuid.NewV4()
 	if err != nil {
 		log.Fatal("Failed to genrate a UUID to represent source file.")
 	}
-
-	// Create the source Msg
-	// We will NOT send this until the task queue has been populated.
-	sourceMsg := &models.MsgSource{Source: *sourceFile, Uuid: sourceUUID.String()}
-
-	// Populate task messages
-	// ----------------------
 
 	// Cache things we've seen before - we only want unique items
 	datasetCache := make(map[string][]string)
@@ -56,9 +55,7 @@ func main() {
 		datasetCache[headerRow[i]] = emptyDim
 	}
 
-	type task struct {
-
-	}
+	var taskList [][]byte
 
 	for {
 		line, err := csvReader.Read()
@@ -89,15 +86,25 @@ func main() {
 
 				taskJson, err := json.Marshal(task)
 				if err != nil {
-					log.Fatal("Failed to marshall json response.")
+					log.Fatal("Error marshalling task message to json.", err)
 				}
+
+				taskList = append(taskList, taskJson)
 			}
 		}
-
 	}
 
+	// Send the task messages
+	for i:=0;i<len(taskList);i++ {
+		messager.SendMsg(taskList[i], sqs_task_queue_url)
+	}
+
+	// Send the source message
+	sourceMsg := &models.MsgSource{Source: *sourceFile, SourceId: sourceUUID.String()}
 	sourceJson, err := json.Marshal(sourceMsg)
 	if err != nil {
-		log.Fatal("Failed to marshall json response.")
+		log.Fatal("Error marshalling source message to json", err)
 	}
+	messager.SendMsg(sourceJson, sqs_source_queue_url)
+
 }

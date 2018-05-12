@@ -8,8 +8,8 @@ type MsgResult struct {
 }
 
 type MsgSource struct {
-	Source string
-	Uuid   string
+	Source   string
+	SourceId string
 }
 
 type MsgTask struct {
