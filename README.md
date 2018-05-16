@@ -20,6 +20,7 @@ The uploader is a command line tool for starting the process.
 | AWS_ACCESS_KEY_ID           | an AWS credential
 | SQS_SOURCE_QUEUE_URL        | the full url of the drr source queue
 | SQS_TASK_QUEUE_URL          | the full url of the drr task queue
+| DRR_IMPORT_BUCKET           | the name of the import bucket
 
 
 

@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 
 	"github.com/mikedata/dp-drr-uploader/messager"
@@ -36,14 +35,7 @@ func main() {
 		log.Fatal("Aborting. Unable to load csv: " + *sourceFile)
 	}
 
-	fmt.Println("here")
-	// load to s3
-	err = s3.UploadSource(fileIn, *sourceFile, aws_region)
-	if err != nil {
-		log.Fatal("Issue uploading to s3", err)
-	}
-
-	fmt.Println("here")
+	s3.UploadSource(fileIn, *sourceFile, bucket, aws_region)
 
 	// read in the header row
 	csvReader := csv.NewReader(fileIn)
