@@ -4,11 +4,12 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 
-	"github.com/mikedata/dp-drr-result-writer/messager"
-	"github.com/mikedata/dp-drr-result-writer/models"
-	"github.com/mikedata/dp-drr-result-writer/s3"
+	"github.com/mikedata/dp-drr-uploader/messager"
+	"github.com/mikedata/dp-drr-uploader/models"
+	"github.com/mikedata/dp-drr-uploader/s3"
 	"github.com/nu7hatch/gouuid"
 	"io"
 	"os"
@@ -19,6 +20,7 @@ var (
 	sqs_source_queue_url = os.Getenv("SQS_SOURCE_QUEUE_URL")
 	sqs_task_queue_url   = os.Getenv("SQS_TASK_QUEUE_URL")
 	aws_region           = os.Getenv("AWS_REGION")
+	bucket               = os.Getenv("DRR_IMPORT_BUCKET")
 )
 
 func main() {
@@ -34,8 +36,14 @@ func main() {
 		log.Fatal("Aborting. Unable to load csv: " + *sourceFile)
 	}
 
+	fmt.Println("here")
 	// load to s3
-	s3.UploadSource(fileIn, *sourceFile, aws_region)
+	err = s3.UploadSource(fileIn, *sourceFile, aws_region)
+	if err != nil {
+		log.Fatal("Issue uploading to s3", err)
+	}
+
+	fmt.Println("here")
 
 	// read in the header row
 	csvReader := csv.NewReader(fileIn)
